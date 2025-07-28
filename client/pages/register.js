@@ -22,8 +22,8 @@ const Register = () => {
             <input type="password" className="form-control mb-4 p-3" value={password} onChange={(e) => setPassword(e.target.value)} placeholder='Password' required />
 
             <br />
-            <button type='submit' className="btn w-50 btn-primary  p-3">Submit</button>
-            <button type='cancel' className="btn w-50 btn-success  p-3">Cancel</button>
+            <button type='submit' className="btn w-50 btn-primary p-3">Submit</button>
+            <button type='cancel' className="btn w-50 btn-error p-3">Cancel</button>
           </form>
         </div>
     </>
