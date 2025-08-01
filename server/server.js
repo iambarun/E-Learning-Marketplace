@@ -4,7 +4,8 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -16,47 +17,87 @@ dotenv.config();
 // Create express app
 const app = express();
 
-//apply middleware
+// Apply middleware
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] ${req.method} request for '${req.url}'`);
-  next();});
+  next();
+});
 
-// //routes
-// fs.readdirSync("./routes").map((r) => 
-//   app.use("/api", require(`./routes/${r}`))
-// );
-
-// Load routes dynamically
+// Load routes dynamically - Enterprise approach
 const loadRoutes = async () => {
   try {
-    const routeFiles = fs.readdirSync("./routes");
+    const routesDir = path.join(__dirname, 'routes');
+    
+    // Check if routes directory exists
+    if (!fs.existsSync(routesDir)) {
+      console.warn('Routes directory not found, creating...');
+      fs.mkdirSync(routesDir, { recursive: true });
+      return;
+    }
+
+    const routeFiles = fs.readdirSync(routesDir);
+    let loadedCount = 0;
     
     for (const file of routeFiles) {
       if (file.endsWith('.js')) {
-        const routePath = `./routes/${file}`;
-        const route = await import(routePath);
-        app.use("/api", route.default);
-        console.log(`Loaded route: ${file}`);
+        const fullPath = path.join(routesDir, file);
+        const fileUrl = pathToFileURL(fullPath).href;
+        
+        try {
+          const route = await import(fileUrl);
+          
+          if (route.default && typeof route.default === 'function') {
+            app.use('/api', route.default);
+            console.log(`✅ Loaded route: ${file}`);
+            loadedCount++;
+          } else {
+            console.warn(`⚠️  Route file ${file} doesn't export a valid router`);
+          }
+        } catch (routeError) {
+          console.error(`❌ Failed to load route ${file}:`, routeError.message);
+        }
       }
     }
+    
+    console.log(`📁 Successfully loaded ${loadedCount} of ${routeFiles.filter(f => f.endsWith('.js')).length} route files`);
+    
+    if (loadedCount === 0) {
+      console.warn('⚠️  No routes were successfully loaded!');
+    }
+    
   } catch (error) {
-    console.error('Error loading routes:', error);
+    console.error('💥 Error loading routes:', error);
+    process.exit(1); // Exit on critical error
   }
 };
 
-// Load routes
-await loadRoutes();
+// Start server function
+const startServer = async () => {
+  try {
+    // Load routes first
+    await loadRoutes();
+    
+    // Default route
+    app.get('/', (req, res) => {
+      res.send('Welcome to the server!');
+    });
 
-// Default route
-app.get('/', (req, res) => {
-  res.send('Welcome to the server!');
-});
+    // Port
+    const port = process.env.PORT || 8000;
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+      console.log(`🌐 API endpoints available at http://localhost:${port}/api/`);
+    });
+    
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
 
-
-//port
-const port = process.env.PORT || 8000;
-app.listen(port, () => {console.log(`Server is running on port ${port}`);});
+// Start the server
+startServer();
