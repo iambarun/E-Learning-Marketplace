@@ -1,3 +1,4 @@
 export const register = (req, res) => {
-  res.json('Register User, response from controller');
+    console.log('Register User', req.body);
+    res.json('Register User, response from controller');
 };
