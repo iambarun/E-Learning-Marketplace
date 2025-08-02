@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'node:url';
 import { pathToFileURL } from 'node:url';
+import mongoose from 'mongoose';
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -16,6 +17,11 @@ dotenv.config();
 
 // Create express app
 const app = express();
+
+// db
+mongoose.connect(process.env.DATABASE_URL, {
+}).then(() => console.log('✅ Database connected successfully'))
+  .catch((error) => console.error('❌ Database connection failed:', error.message));
 
 // Apply middleware
 app.use(cors());
